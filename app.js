@@ -537,3 +537,27 @@ setRecUI(false);
 setStatus("Ready");
 setAnalysisResult({ transcript: "—", total: null, breakdownText: "—" });
 if (recommendedScriptBox) recommendedScriptBox.textContent = "—";
+
+// -----------------------------
+// Signup (frontend-only placeholder)
+// -----------------------------
+function handleSignup(e){
+  e.preventDefault();
+
+  const emailInput = document.getElementById("signupEmail");
+  const note = document.getElementById("signupNote");
+
+  const email = emailInput.value.trim();
+  if (!email) return;
+
+  // TODO: Replace this with real backend / Mailchimp / ConvertKit call
+  console.log("Signup email:", email);
+
+  emailInput.value = "";
+  note.style.display = "block";
+
+  setTimeout(() => {
+    note.style.display = "none";
+  }, 4000);
+}
+
