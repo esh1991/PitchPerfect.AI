@@ -15,6 +15,7 @@
       </div>
 
       <div class="top-actions">
+        <button class="btn secondary" id="changeInterviewerBtn" type="button">Change Interviewer</button>
         <button class="btn primary" id="startInterviewBtn" type="button">Start Interview</button>
         <button class="btn secondary" id="resetBtn" type="button">Reset</button>
       </div>
@@ -25,19 +26,14 @@
       <div class="left">
         <div class="panel">
           <div class="videoWrap">
-            <div class="videoCard" id="videoDropZone" title="Drag and drop a video here">
+            <div class="videoCard" id="videoDropZone">
               <div class="hintBadge">▶ Interview Prompt</div>
-
-              <button class="bigUploadBtn" id="bigUploadBtn" type="button">
-                ⬆️ Upload Video
-              </button>
 
               <video id="mainVideo" class="mainVideo" playsinline></video>
 
               <div class="videoOverlay" id="videoOverlay">
                 <div class="subtitle">
-                  Upload a prompt video<br/>then click <span class="subtitleAccent">Start Interview</span>
-                  <small>Tip: drag & drop works too.</small>
+                  Start Interview
                 </div>
               </div>
             </div>
@@ -97,7 +93,6 @@
           <div class="rightTabs">
             <button class="tabBtn active" id="tabScriptBtn" type="button">Script</button>
             <button class="tabBtn" id="tabAnalysisBtn" type="button">Analysis</button>
-
             <div class="tabBadge" id="tabBadge">SAVED</div>
           </div>
 
@@ -137,14 +132,11 @@
 
               <div class="transcriptBox" id="transcriptBox">—</div>
 
+              <div class="analysisRow" style="margin-top:10px;">
+                <div class="analysisLabel">Recommended script</div>
+              </div>
 
-<div class="analysisRow" style="margin-top:10px;">
-  <div class="analysisLabel">Recommended script</div>
-</div>
-
-<div class="transcriptBox" id="recommendedScriptBox">—</div>
-
-
+              <div class="transcriptBox" id="recommendedScriptBox">—</div>
 
               <div class="miniHint" id="analysisHint">
                 Tip: start recording before you answer. Transcript is generated while you speak.
@@ -155,8 +147,6 @@
       </div>
     </div>
 
-    <!-- Hidden file input for main video upload -->
-    <input id="fileInput" type="file" accept="video/*" />
   </div>
 
   <script src="./app.js" defer></script>
