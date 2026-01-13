@@ -403,3 +403,82 @@ body{
   white-space: pre-wrap;
 }
 
+/* Signup */
+.signupWrap{
+  max-width: 1240px;
+  margin: 28px auto 0;
+  padding: 0 6px;
+}
+
+.signupCard{
+  display:flex;
+  gap: 18px;
+  align-items:center;
+  justify-content:space-between;
+  padding: 18px 20px;
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,.02));
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+}
+
+@media (max-width: 860px){
+  .signupCard{
+    flex-direction:column;
+    align-items:stretch;
+    text-align:center;
+  }
+}
+
+.signupTitle{
+  font-weight: 900;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.signupSubtitle{
+  color: rgba(255,255,255,.65);
+  font-size: 13px;
+  line-height: 1.45;
+  max-width: 520px;
+}
+
+.signupForm{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+
+@media (max-width: 860px){
+  .signupForm{
+    flex-direction:column;
+  }
+}
+
+.signupForm input{
+  min-width: 240px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.35);
+  color: rgba(255,255,255,.9);
+  outline:none;
+  font-size: 13px;
+}
+
+.signupForm input::placeholder{
+  color: rgba(255,255,255,.4);
+}
+
+.signupForm input:focus{
+  border-color: rgba(108,99,255,.5);
+}
+
+.signupNote{
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(200,205,255,.9);
+  font-weight: 700;
+}
+
