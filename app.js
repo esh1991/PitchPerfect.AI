@@ -27,76 +27,96 @@ tabAnalysisBtn.addEventListener("click", () => showRightTab("analysis"));
 showRightTab("script"); // default
 
 // -----------------------------
-// Main Video Upload + Start Interview
+// Interviewer clips (HOSTED IN REPO)
+// -----------------------------
+// Put your files in /clips and update this list.
+const INTERVIEWER_CLIPS = [
+  "./clips/interview1.mp4",
+  "./clips/interview2.mp4",
+  "./clips/interview3.mp4",
+];
+
+let currentClip = null;
+
+function pickRandomClip(exclude){
+  if (!INTERVIEWER_CLIPS.length) return null;
+  if (INTERVIEWER_CLIPS.length === 1) return INTERVIEWER_CLIPS[0];
+
+  let candidate = null;
+  let guard = 0;
+  while ((candidate === null || candidate === exclude) && guard < 50) {
+    candidate = INTERVIEWER_CLIPS[Math.floor(Math.random() * INTERVIEWER_CLIPS.length)];
+    guard++;
+  }
+  return candidate || INTERVIEWER_CLIPS[0];
+}
+
+// -----------------------------
+// Main Video (random interviewer)
 // -----------------------------
 const mainVideo = $("mainVideo");
 const videoOverlay = $("videoOverlay");
-const fileInput = $("fileInput");
-const bigUploadBtn = $("bigUploadBtn");
 const startInterviewBtn = $("startInterviewBtn");
 const resetBtn = $("resetBtn");
-const videoDropZone = $("videoDropZone");
+const changeInterviewerBtn = $("changeInterviewerBtn");
 
-let mainVideoObjectUrl = null;
+function loadInterviewerClip(path){
+  if (!path) return;
 
-function setMainVideoFromFile(file){
-  if (!file || !file.type?.startsWith("video/")) return;
+  currentClip = path;
 
-  if (mainVideoObjectUrl) URL.revokeObjectURL(mainVideoObjectUrl);
-  mainVideoObjectUrl = URL.createObjectURL(file);
-
-  mainVideo.src = mainVideoObjectUrl;
+  mainVideo.pause();
+  mainVideo.src = path;
   mainVideo.load();
+
+  // Controls optional; keep true for debugging, set false if you want locked UI
   mainVideo.controls = true;
   mainVideo.muted = false;
 
-  videoOverlay.style.display = "none";
-  setStatus("Video loaded. Click Start Interview.");
+  // Overlay stays visible until Start Interview is clicked
+  videoOverlay.style.display = "flex";
+
+  setStatus("Interviewer ready. Click Start Interview.");
 }
 
-bigUploadBtn.addEventListener("click", () => fileInput.click());
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files?.[0];
-  if (!file) return;
-  setMainVideoFromFile(file);
-});
-
-// Drag & drop support
-videoDropZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  videoDropZone.style.outline = "2px solid rgba(108,99,255,.35)";
-});
-videoDropZone.addEventListener("dragleave", () => {
-  videoDropZone.style.outline = "none";
-});
-videoDropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  videoDropZone.style.outline = "none";
-  const file = e.dataTransfer.files?.[0];
-  if (file && file.type.startsWith("video/")) setMainVideoFromFile(file);
-});
-
-// Start Interview: play the prompt video
-startInterviewBtn.addEventListener("click", async () => {
-  if (!mainVideo.src) {
-    alert("Please upload a prompt video first.");
+async function playCurrentClip(){
+  if (!currentClip) {
+    alert("No interviewer clips configured. Add files to /clips and update INTERVIEWER_CLIPS in app.js");
     return;
   }
   try{
+    videoOverlay.style.display = "none";
     mainVideo.currentTime = 0;
     await mainVideo.play();
     setStatus("Interview started (video playing).");
   }catch(err){
     console.warn(err);
-    alert("Autoplay blocked. Click play on the video once, then try again.");
+    alert("Autoplay blocked. Click inside the page or press play once, then try again.");
   }
+}
+
+// Load a random interviewer on first load
+(function initInterviewer(){
+  const first = pickRandomClip(null);
+  loadInterviewerClip(first);
+})();
+
+// Start Interview
+startInterviewBtn.addEventListener("click", () => playCurrentClip());
+
+// Change Interviewer: pick a different clip & play immediately
+changeInterviewerBtn.addEventListener("click", async () => {
+  const next = pickRandomClip(currentClip);
+  loadInterviewerClip(next);
+  // Immediately start playing the new interviewer clip
+  await playCurrentClip();
 });
 
 // -----------------------------
 // Notes autosave (Script tab)
 // -----------------------------
 const notes = $("notes");
-const LS_KEY = "pitchperfect_notes_split_v4";
+const LS_KEY = "pitchperfect_notes_split_v5";
 
 function setSavedUI(saved=true){
   tabBadge.textContent = saved ? "SAVED" : "SAVING…";
@@ -182,7 +202,6 @@ function tightenPhrases(text){
 }
 
 function removeDisfluencies(text){
-  // Remove um/ummm/uhhh/ermmm/errr variants
   return text
     .replace(/\b(um+|uh+|erm+|er+)\b/gi, "")
     .replace(/\s+/g, " ")
@@ -191,19 +210,16 @@ function removeDisfluencies(text){
 
 function removeDuplicateRuns(text){
   let t = text;
-  // Remove immediate word repeats: "I I", "the the"
   t = t.replace(/\b(\w+)(\s+\1\b)+/gi, "$1");
-  // Remove repeated short phrases like "I think I think"
   t = t.replace(/\b(i think)(\s+i think\b)+/gi, "I think");
   return t.trim();
 }
 
 function removeStandaloneLike(text){
-  // Remove "like" when used as filler, but keep "would like / I'd like / I would like"
   return text.replace(/\blike\b/gi, (match, offset, str) => {
     const before = str.slice(Math.max(0, offset - 12), offset).toLowerCase();
     if (before.includes("would ") || before.includes("i'd ") || before.includes("id ") || before.includes("i would ")) {
-      return match; // keep
+      return match;
     }
     return "";
   });
@@ -212,8 +228,6 @@ function removeStandaloneLike(text){
 function addLightPunctuation(text){
   let s = text.trim();
   if (!s) return s;
-
-  // Ensure a final period if missing
   if (!/[.!?]$/.test(s)) s += ".";
   return s;
 }
@@ -251,8 +265,6 @@ function cleanAndTightenTranscript(rawTranscript){
   t = removeDuplicateRuns(t);
   t = removeStandaloneLike(t);
   t = tightenPhrases(t);
-
-  // Remove leftover double spaces from deletions
   t = normalizeWhitespace(t).replace(/\s{2,}/g, " ").trim();
 
   const sentences = splitIntoSentences(t)
@@ -262,9 +274,7 @@ function cleanAndTightenTranscript(rawTranscript){
     .map(addLightPunctuation)
     .map(capitalizeSentence);
 
-  // Drop tiny fragments (often junk)
   const filtered = sentences.filter(s => s.replace(/[^\w]/g, "").length >= 3);
-
   return normalizeWhitespace(filtered.join(" "));
 }
 
@@ -321,13 +331,8 @@ function initSpeechRecognition(){
     if (live) transcriptBox.textContent = live;
   };
 
-  recognition.onerror = (e) => {
-    console.warn("SpeechRecognition error:", e);
-  };
-
-  recognition.onend = () => {
-    recognitionRunning = false;
-  };
+  recognition.onerror = (e) => console.warn("SpeechRecognition error:", e);
+  recognition.onend = () => { recognitionRunning = false; };
 
   return true;
 }
@@ -338,32 +343,18 @@ if (speechOk) setAnalysisState("WAITING");
 // -----------------------------
 // Filler word counting (includes variants)
 // -----------------------------
-const PHRASE_FILLERS = [
-  "you know",
-  "i mean",
-  "actually",
-  "basically",
-  "literally",
-  "like",
-  "so",
-  "well",
-  "right"
-];
-
+const PHRASE_FILLERS = ["you know","i mean","actually","basically","literally","like","so","well","right"];
 const VARIANT_PATTERNS = [
-  { label: "um/umm/ummm",      re: /\bum+\b/g },
-  { label: "uh/uhh/uhhh",      re: /\buh+\b/g },
-  { label: "erm/ermm/ermmm",   re: /\berm+\b/g },
-  { label: "er/err/errr",      re: /\ber+\b/g }
+  { label: "um/umm/ummm", re: /\bum+\b/g },
+  { label: "uh/uhh/uhhh", re: /\buh+\b/g },
+  { label: "erm/ermm/ermmm", re: /\berm+\b/g },
+  { label: "er/err/errr", re: /\ber+\b/g }
 ];
 
-function escapeRegExp(str){
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+function escapeRegExp(str){ return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
 
 function countFillers(transcript){
   const t = (transcript || "").toLowerCase();
-
   const counts = {};
   let total = 0;
 
@@ -382,14 +373,9 @@ function countFillers(transcript){
     total += c;
   }
 
-  const entries = Object.entries(counts)
-    .filter(([,c]) => c > 0)
-    .sort((a,b) => b[1] - a[1]);
-
-  const breakdownText = entries.length
-    ? entries.map(([k,v]) => `${k}: ${v}`).join("\n")
-    : "No filler words detected (based on transcript).";
-
+  const entries = Object.entries(counts).filter(([,c]) => c > 0).sort((a,b) => b[1] - a[1]);
+  const breakdownText = entries.length ? entries.map(([k,v]) => `${k}: ${v}`).join("\n")
+                                      : "No filler words detected (based on transcript).";
   return { total, breakdownText };
 }
 
@@ -400,7 +386,6 @@ const recStartBtn = $("recStartBtn");
 const recStopBtn  = $("recStopBtn");
 const recDot = $("recDot");
 const recLabel = $("recLabel");
-
 const audioPreview = $("audioPreview");
 const audioPlayback = $("audioPlayback");
 const audioDownload = $("audioDownload");
@@ -422,17 +407,12 @@ function startRecognition(){
   finalTranscript = "";
   transcriptBox.textContent = "Listening…";
   setAnalysisState("LISTENING");
-  try{
-    recognition.start();
-    recognitionRunning = true;
-  }catch(_e){
-    // ignore start errors
-  }
+  try { recognition.start(); recognitionRunning = true; } catch {}
 }
 
 function stopRecognition(){
   if (!speechOk || !recognition) return;
-  try{ recognition.stop(); }catch(_e){}
+  try { recognition.stop(); } catch {}
 }
 
 async function startAudioRecording(){
@@ -444,9 +424,7 @@ async function startAudioRecording(){
   mediaRecorder = new MediaRecorder(micStream, mimeType ? { mimeType } : undefined);
   audioChunks = [];
 
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) audioChunks.push(e.data);
-  };
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) audioChunks.push(e.data); };
 
   mediaRecorder.onstop = () => {
     const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || "audio/webm" });
@@ -470,17 +448,13 @@ async function startAudioRecording(){
   mediaRecorder.start();
   setRecUI(true);
   setStatus("Recording audio…");
-
   startRecognition();
 }
 
 function stopAudioRecording(){
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-  }
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
   setRecUI(false);
   setStatus("Audio recorded. Analyzing…");
-
   stopRecognition();
 
   setTimeout(() => {
@@ -501,16 +475,13 @@ function stopAudioRecording(){
 }
 
 recStartBtn.addEventListener("click", async () => {
-  try{
-    await startAudioRecording();
-  }catch(err){
-    console.warn(err);
+  try { await startAudioRecording(); }
+  catch {
     alert("Mic permission denied or unavailable. Please allow microphone access.");
     setRecUI(false);
     setStatus("Mic unavailable.");
   }
 });
-
 recStopBtn.addEventListener("click", () => stopAudioRecording());
 
 // -----------------------------
@@ -521,7 +492,7 @@ const webcamVideo = $("webcam");
   try{
     const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     webcamVideo.srcObject = stream;
-  }catch(_err){
+  }catch{
     // ignore
   }
 })();
@@ -530,19 +501,11 @@ const webcamVideo = $("webcam");
 // Reset
 // -----------------------------
 resetBtn.addEventListener("click", () => {
-  // Main video
-  mainVideo.pause();
-  mainVideo.removeAttribute("src");
-  mainVideo.load();
-  mainVideo.controls = false;
-  fileInput.value = "";
-  if (mainVideoObjectUrl) {
-    URL.revokeObjectURL(mainVideoObjectUrl);
-    mainVideoObjectUrl = null;
-  }
-  videoOverlay.style.display = "flex";
+  // Video: load a fresh random interviewer but don't autoplay
+  const next = pickRandomClip(currentClip);
+  loadInterviewerClip(next);
 
-  // Audio
+  // Audio cleanup
   try { if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop(); } catch {}
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   setRecUI(false);
@@ -552,7 +515,6 @@ resetBtn.addEventListener("click", () => {
   audioPlayback.removeAttribute("src");
   audioPlayback.load();
 
-  // Stop recognition if running
   try { stopRecognition(); } catch {}
 
   // Notes
