@@ -7,6 +7,11 @@ const statusLine = $("statusLine");
 function setStatus(text){ statusLine.textContent = text; }
 
 // -----------------------------
+// n8n webhook (replace with your production webhook URL)
+// -----------------------------
+const N8N_SIGNUP_WEBHOOK_URL = "https://YOUR_N8N_DOMAIN/webhook/signup";
+
+// -----------------------------
 // Tabs (Right side)
 // -----------------------------
 const tabScriptBtn = $("tabScriptBtn");
@@ -14,12 +19,6 @@ const tabAnalysisBtn = $("tabAnalysisBtn");
 const scriptPanel = $("scriptPanel");
 const analysisPanel = $("analysisPanel");
 const tabBadge = $("tabBadge");
-
-// -----------------------------
-// n8n webhook (replace with your production webhook URL)
-// -----------------------------
-const N8N_SIGNUP_WEBHOOK_URL = "https://YOUR_N8N_DOMAIN/webhook/your-webhook-path";
-
 
 function showRightTab(which){
   const isScript = which === "script";
@@ -34,8 +33,8 @@ showRightTab("script"); // default
 
 // -----------------------------
 // Interviewer clips (HOSTED IN REPO)
+// Put your mp4 files in /clips and update this list.
 // -----------------------------
-// Put your files in /clips and update this list.
 const INTERVIEWER_CLIPS = [
   "./clips/interview1.mp4",
   "./clips/interview2.mp4",
@@ -43,6 +42,15 @@ const INTERVIEWER_CLIPS = [
 ];
 
 let currentClip = null;
+
+// -----------------------------
+// Main Video (random interviewer)
+// -----------------------------
+const mainVideo = $("mainVideo");
+const videoOverlay = $("videoOverlay");
+const startInterviewBtn = $("startInterviewBtn");
+const resetBtn = $("resetBtn");
+const changeInterviewerBtn = $("changeInterviewerBtn");
 
 function pickRandomClip(exclude){
   if (!INTERVIEWER_CLIPS.length) return null;
@@ -57,15 +65,6 @@ function pickRandomClip(exclude){
   return candidate || INTERVIEWER_CLIPS[0];
 }
 
-// -----------------------------
-// Main Video (random interviewer)
-// -----------------------------
-const mainVideo = $("mainVideo");
-const videoOverlay = $("videoOverlay");
-const startInterviewBtn = $("startInterviewBtn");
-const resetBtn = $("resetBtn");
-const changeInterviewerBtn = $("changeInterviewerBtn");
-
 function loadInterviewerClip(path){
   if (!path) return;
 
@@ -75,13 +74,10 @@ function loadInterviewerClip(path){
   mainVideo.src = path;
   mainVideo.load();
 
-  // Controls optional; keep true for debugging, set false if you want locked UI
-  mainVideo.controls = true;
+  mainVideo.controls = true;   // set false if you want locked UI
   mainVideo.muted = false;
 
-  // Overlay stays visible until Start Interview is clicked
   videoOverlay.style.display = "flex";
-
   setStatus("Interviewer ready. Click Start Interview.");
 }
 
@@ -101,20 +97,18 @@ async function playCurrentClip(){
   }
 }
 
-// Load a random interviewer on first load
+// Load a random interviewer on page load
 (function initInterviewer(){
   const first = pickRandomClip(null);
   loadInterviewerClip(first);
 })();
 
-// Start Interview
 startInterviewBtn.addEventListener("click", () => playCurrentClip());
 
-// Change Interviewer: pick a different clip & play immediately
+// Change Interviewer: pick different random & immediately play
 changeInterviewerBtn.addEventListener("click", async () => {
   const next = pickRandomClip(currentClip);
   loadInterviewerClip(next);
-  // Immediately start playing the new interviewer clip
   await playCurrentClip();
 });
 
@@ -122,7 +116,7 @@ changeInterviewerBtn.addEventListener("click", async () => {
 // Notes autosave (Script tab)
 // -----------------------------
 const notes = $("notes");
-const LS_KEY = "pitchperfect_notes_split_v5";
+const LS_KEY = "pitchperfect_notes_split_v6";
 
 function setSavedUI(saved=true){
   tabBadge.textContent = saved ? "SAVED" : "SAVING…";
@@ -504,6 +498,62 @@ const webcamVideo = $("webcam");
 })();
 
 // -----------------------------
+// Signup -> n8n webhook
+// -----------------------------
+(function initSignup(){
+  const form = document.getElementById("signupForm");
+  if (!form) return;
+
+  const emailInput = document.getElementById("signupEmail");
+  const note = document.getElementById("signupNote");
+  const err = document.getElementById("signupError");
+  const btn = document.getElementById("signupBtn");
+
+  function show(el){ if (el) el.style.display = "block"; }
+  function hide(el){ if (el) el.style.display = "none"; }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    hide(note); hide(err);
+
+    const email = (emailInput.value || "").trim();
+    if (!email) return;
+
+    const prevText = btn.textContent;
+    btn.textContent = "Sending…";
+    btn.disabled = true;
+
+    try{
+      const payload = {
+        email,
+        source: "nailtheintro-site",
+        page: window.location.href,
+        userAgent: navigator.userAgent,
+        ts: new Date().toISOString(),
+      };
+
+      const res = await fetch(N8N_SIGNUP_WEBHOOK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error(`Webhook error: ${res.status}`);
+
+      emailInput.value = "";
+      show(note);
+      setTimeout(() => hide(note), 4000);
+    }catch(e){
+      console.warn(e);
+      show(err);
+    }finally{
+      btn.textContent = prevText;
+      btn.disabled = false;
+    }
+  });
+})();
+
+// -----------------------------
 // Reset
 // -----------------------------
 resetBtn.addEventListener("click", () => {
@@ -543,70 +593,3 @@ setRecUI(false);
 setStatus("Ready");
 setAnalysisResult({ transcript: "—", total: null, breakdownText: "—" });
 if (recommendedScriptBox) recommendedScriptBox.textContent = "—";
-
-// -----------------------------
-// Signup -> n8n webhook
-// -----------------------------
-(function initSignup(){
-  const form = document.getElementById("signupForm");
-  if (!form) return;
-
-  const emailInput = document.getElementById("signupEmail");
-  const note = document.getElementById("signupNote");
-  const err = document.getElementById("signupError");
-  const btn = document.getElementById("signupBtn");
-
-  function show(el){
-    if (!el) return;
-    el.style.display = "block";
-  }
-  function hide(el){
-    if (!el) return;
-    el.style.display = "none";
-  }
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    hide(note);
-    hide(err);
-
-    const email = (emailInput.value || "").trim();
-    if (!email) return;
-
-    // UI: loading state
-    const prevText = btn.textContent;
-    btn.textContent = "Sending…";
-    btn.disabled = true;
-
-    try {
-      const payload = {
-        email,
-        source: "pitchperfect-site",
-        page: window.location.href,
-        userAgent: navigator.userAgent,
-        ts: new Date().toISOString(),
-      };
-
-      const res = await fetch(N8N_SIGNUP_WEBHOOK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error(`Webhook error: ${res.status}`);
-
-      emailInput.value = "";
-      show(note);
-
-      setTimeout(() => hide(note), 4000);
-    } catch (e) {
-      console.warn(e);
-      show(err);
-    } finally {
-      btn.textContent = prevText;
-      btn.disabled = false;
-    }
-  });
-})();
-
-
